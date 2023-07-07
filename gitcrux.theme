@@ -12,26 +12,25 @@ _gitcrux_centered() {
     width="$2"
 
     if (( ${#text} > width )); then
-        return 2
+        gitcrux_centered="${text:0:width-1}…"
     elif (( ${#text} == width )); then
         gitcrux_centered="$text"
-        return 0
+    else
+        span=$((width - ${#text}))
+        diff=$(( span/2 ))
+        padl=""
+        padr=""
+        for (( i=0; i < diff; i++ )) ; do
+            padl+=" "
+            padr+=" "
+        done
+
+        if (( span % 2 > 0 )); then
+            padr+=" "
+        fi
+
+        gitcrux_centered="${padl}${text}${padr}"
     fi
-
-    span=$((width - ${#text}))
-    diff=$(( span/2 ))
-    padl=""
-    padr=""
-    for (( i=0; i < diff; i++ )) ; do
-        padl+=" "
-        padr+=" "
-    done
-
-    if (( span % 2 > 0 )); then
-        padr+=" "
-    fi
-
-    gitcrux_centered="${padl}${text}${padr}"
 }
 
 _gitcrux_arrow() {
@@ -112,7 +111,29 @@ _gitcrux_VCS() {
     done
     GITCRUX_VCS+="${header}${n}"
     GITCRUX_VCS+="${line}${n}"
+
     _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 1 4 "pull"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 45 1" 2 4 "branch"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 183 1" 4 5 "save"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_LEFT[@]} "0 46 1" 3 4 "add"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_LEFT[@]} "0 202 1" 2 3 "commit"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_LEFT[@]} "0 183 1" 4 5 "pop"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 208 1" 2 4 "merge master"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_LEFT[@]} "0 220 1" 1 2 "push"
     GITCRUX_VCS+="${gitcrux_arrow}${n}"
 
 }
@@ -153,7 +174,7 @@ _lp_gitcrux_theme_prompt() {
         # Add VCS infos
         # If root, the info has not been collected unless LP_ENABLE_VCS_ROOT
         # is set.
-        if [[ -n ${LP_VCS-} ]]; then
+        if _lp_find_vcs; then
             _gitcrux_VCS
             PS1+="${n}${GITCRUX_VCS}"
         fi
