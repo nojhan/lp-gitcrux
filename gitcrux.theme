@@ -5,15 +5,44 @@ GITCRUX_ARROW_LEFT=("" "")
 #                     bg  fg
 GITCRUX_COLOR_REMOTE=(220 0)
 
+# Center the given $1 text with spaces to fit a string of length $2.
+_gitcrux_centered() {
+    local text width padl padr span diff i
+    text="$1"
+    width="$2"
+
+    if (( ${#text} > width )); then
+        return 2
+    elif (( ${#text} == width )); then
+        gitcrux_centered="$text"
+        return 0
+    fi
+
+    span=$((width - ${#text}))
+    diff=$(( span/2 ))
+    padl=""
+    padr=""
+    for (( i=0; i < diff; i++ )) ; do
+        padl+=" "
+        padr+=" "
+    done
+
+    if (( span % 2 > 0 )); then
+        padr+=" "
+    fi
+
+    gitcrux_centered="${padl}${text}${padr}"
+}
+
 _gitcrux_arrow() {
-    local in start end color from to text color_body color_ends span sspan padl padr
+    local in start end color from to text color_body color_ends
 
     in="$1"
     start="$2"
     end="$3"
     color="$4"
-    from="$5"
-    to="$6"
+    from=$(($5 * GITCRUX_COL_WIDTH - GITCRUX_COL_WIDTH/2))
+    to=$(($6 * GITCRUX_COL_WIDTH - GITCRUX_COL_WIDTH/2 - 1))
     text="$7"
 
     local lp_terminal_format
@@ -31,34 +60,23 @@ _gitcrux_arrow() {
         fi
     fi
 
-    sspan=$((span - ${#text}))
-    diff=$(( sspan/2 ))
-    padl=""
-    padr=""
-    for (( i=0; i < diff; i++ )) ; do
-        padl+=" "
-        padr+=" "
-    done
+    _gitcrux_centered "$text" $span
 
-    if (( sspan % 2 > 0 )); then
-        padr+=" "
-    fi
-
-    gitcrux_arrow="${in:0:from}${color_ends}${start}${color_body}${padl}${text}${padr}${color_ends}${end}${NO_COL}${in:to:${#in}}"
+    gitcrux_arrow="${in:0:from}${color_ends}${start}${color_body}${gitcrux_centered}${color_ends}${end}${NO_COL}${in:to:${#in}}"
 }
 
 _gitcrux_VCS() {
+    GITCRUX_COL_WIDTH=11
     GITCRUX_VCS="${n}"
+
+    local head_remote head_stage head_branch
 
     head_remote="origin" # TODO
 
-    head_repo="${PWD##*/}"
-
     LP_TIME_ANALOG=1
-    _lp_analog_time_color
-    head_stage="$lp_analog_time_color"
+    _lp_analog_time
+    head_stage="$lp_analog_time"
 
-    local head_branch
     if _lp_vcs_branch; then
         head_branch="$lp_vcs_branch"
 
@@ -74,15 +92,27 @@ _gitcrux_VCS() {
         head_branch="${lp_vcs_commit_id:0:7}"
     fi
 
-    head_stash="stash"
+    _GITCRUX_HEAD_STASH="stash"
 
-    header="${head_remote} ${head_repo} ${head_stage} ${head_branch} ${head_stash}"
+    header=""
+    line=""
+    for col in "${head_remote}" "${_GITCRUX_HEAD_REPO}" "${head_stage}" "${head_branch}" "${_GITCRUX_HEAD_STASH}"; do
+
+        _gitcrux_centered "│" $GITCRUX_COL_WIDTH
+        line+="$gitcrux_centered"
+
+        if ((${#col}+1 > GITCRUX_COL_WIDTH)); then
+            header+="${col:0:GITCRUX_COL_WIDTH-1}…"
+        elif ((${#col}+1 == GITCRUX_COL_WIDTH)); then
+            header+="${col}"
+        else
+            _gitcrux_centered "${col}" $GITCRUX_COL_WIDTH
+            header+="$gitcrux_centered"
+        fi
+    done
     GITCRUX_VCS+="${header}${n}"
-    #               10        20        30        40
-    #     01234567890123456789012345678901234567890123456789
-    line=". │         │         │          │          │."
-    _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 3 33 "pull"
     GITCRUX_VCS+="${line}${n}"
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 1 4 "pull"
     GITCRUX_VCS+="${gitcrux_arrow}${n}"
 
 }
@@ -99,6 +129,8 @@ _lp_gitcrux_theme_activate() {
 # It should set up any data that does not change when the user stays in the same directory.
 _lp_gitcrux_theme_directory() {
     _lp_default_theme_directory
+
+    _GITCRUX_HEAD_REPO="${PWD##*/}"
 }
 
 # This function is called every time the prompt is displayed,
