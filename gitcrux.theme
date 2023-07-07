@@ -1,0 +1,139 @@
+
+GITCRUX_ARROW_RIGHT=("" "")
+GITCRUX_ARROW_LEFT=("" "")
+
+#                     bg  fg
+GITCRUX_COLOR_REMOTE=(220 0)
+
+_gitcrux_arrow() {
+    local in start end color from to text color_body color_ends span sspan padl padr
+
+    in="$1"
+    start="$2"
+    end="$3"
+    color="$4"
+    from="$5"
+    to="$6"
+    text="$7"
+
+    local lp_terminal_format
+    lp_terminal_format ${color}
+    color_body="$lp_terminal_format"
+    lp_terminal_format -3 -1
+    color_ends="$lp_terminal_format"
+
+    span=$((to-from-${#start}-${#end}))
+    if (( from > ${#in} || to > ${#in} )); then
+        return 2
+    else
+        if (( ${#text} > span )); then
+            return 3
+        fi
+    fi
+
+    sspan=$((span - ${#text}))
+    diff=$(( sspan/2 ))
+    padl=""
+    padr=""
+    for (( i=0; i < diff; i++ )) ; do
+        padl+=" "
+        padr+=" "
+    done
+
+    if (( sspan % 2 > 0 )); then
+        padr+=" "
+    fi
+
+    gitcrux_arrow="${in:0:from}${color_ends}${start}${color_body}${padl}${text}${padr}${color_ends}${end}${NO_COL}${in:to:${#in}}"
+}
+
+_gitcrux_VCS() {
+    GITCRUX_VCS="${n}"
+
+    head_remote="origin" # TODO
+
+    head_repo="${PWD##*/}"
+
+    LP_TIME_ANALOG=1
+    _lp_analog_time_color
+    head_stage="$lp_analog_time_color"
+
+    local head_branch
+    if _lp_vcs_branch; then
+        head_branch="$lp_vcs_branch"
+
+        if _lp_vcs_bookmark; then
+            head_branch+=": $lp_vcs_bookmark"
+        fi
+    elif _lp_vcs_bookmark; then
+        head_branch="$lp_vcs_bookmark"
+    elif _lp_vcs_tag; then
+        head_branch="tag: $lp_vcs_tag"
+    else
+        _lp_vcs_commit_id
+        head_branch="${lp_vcs_commit_id:0:7}"
+    fi
+
+    head_stash="stash"
+
+    header="${head_remote} ${head_repo} ${head_stage} ${head_branch} ${head_stash}"
+    GITCRUX_VCS+="${header}${n}"
+    #               10        20        30        40
+    #     01234567890123456789012345678901234567890123456789
+    line=". │         │         │          │          │."
+    _gitcrux_arrow "$line" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 3 33 "pull"
+    GITCRUX_VCS+="${line}${n}"
+    GITCRUX_VCS+="${gitcrux_arrow}${n}"
+
+}
+
+
+# This function is called when the prompt is activated,
+# either at the very beginning of the shell session,
+# either when the user call `lp_theme`.
+_lp_gitcrux_theme_activate() {
+    _lp_default_theme_activate
+}
+
+# This function is called everytime the user change their directory.
+# It should set up any data that does not change when the user stays in the same directory.
+_lp_gitcrux_theme_directory() {
+    _lp_default_theme_directory
+}
+
+# This function is called every time the prompt is displayed,
+# that is, between commands.
+_lp_gitcrux_theme_prompt() {
+    _lp_default_theme_prompt_data
+    local n=$'\n'
+    if [[ -z "${LP_PS1-}" ]]; then
+        # Add user-defined prefix, battery, load, temperature, wifi and jobs.
+        PS1="${LP_PS1_PREFIX}${LP_BATT}${LP_LOAD}${LP_TEMP}${LP_WIFI}${LP_JOBS}"
+        # Add multiplexer brackets, user, host, permissions colon, working directory, dirstack, proxy, watched environment variables and nested shell level.
+        PS1+="${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}${LP_PWD}${LP_DIRSTACK}${LP_BRACKET_CLOSE}${LP_PROXY}${LP_ENVVARS}${LP_SHLVL}"
+
+        # Add the list of development environments/config/etc.
+        PS1+="${LP_DEV_ENV}"
+
+        # Add last runtime, return code & meaning.
+        PS1+="${LP_RUNTIME}${LP_ERR}${LP_ERR_MEANING}"
+
+        # Add VCS infos
+        # If root, the info has not been collected unless LP_ENABLE_VCS_ROOT
+        # is set.
+        if [[ -n ${LP_VCS-} ]]; then
+            _gitcrux_VCS
+            PS1+="${n}${GITCRUX_VCS}"
+        fi
+
+        # prompt mark and user-defined postfix
+        PS1+="${n}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}${LP_PS1_POSTFIX}"
+
+        # Get the core sections without prompt escapes and make them into a title.
+        _lp_formatted_title "${LP_PS1_PREFIX}${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_MARK_PERM}${lp_path-}${LP_BRACKET_CLOSE}${LP_MARK_PREFIX}${LP_MARK}${LP_PS1_POSTFIX}"
+    else
+        PS1=$LP_PS1
+    fi
+}
+
+
