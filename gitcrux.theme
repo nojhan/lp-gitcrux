@@ -11,12 +11,17 @@ _gitcrux_centered() {
     text="$1"
     width="$2"
 
-    if (( ${#text} > width )); then
-        gitcrux_centered="${text:0:width-1}…"
-    elif (( ${#text} == width )); then
+    __lp_strip_escapes "$text"
+    raw_text="$ret"
+
+    if (( ${#raw_text} > width )); then
+        # gitcrux_centered="${text:0:width-1}…"
+        gitcrux_centered="$text"
+        return 2
+    elif (( ${#raw_text} == width )); then
         gitcrux_centered="$text"
     else
-        span=$((width - ${#text}))
+        span=$((width - ${#raw_text}))
         diff=$(( span/2 ))
         padl=""
         padr=""
@@ -68,14 +73,49 @@ _gitcrux_VCS() {
     GITCRUX_COL_WIDTH=11
     GITCRUX_VCS="${n}"
 
-    local head_remote head_stage head_branch
+    local head_remote head_repo head_stage head_branch
 
+    # REMOTE
     head_remote="origin" # TODO
 
+    # REPO
+    head_repo="${_GITCRUX_HEAD_REPO}"
+
+    local has_commit=
+    if _lp_vcs_commits_off_remote; then
+        if [[ "$lp_vcs_commit_behind" -ne "0" ]]; then
+            head_remote+="(${LP_COLOR_COMMITS_BEHIND}$lp_vcs_commit_behind${NO_COL})"
+        fi
+        if [[ "$lp_vcs_commit_ahead" -ne "0" ]]; then
+            head_repo+="(${LP_COLOR_COMMITS}$lp_vcs_commit_ahead${NO_COL})"
+        fi
+    fi
+
+    # STAGE
     LP_TIME_ANALOG=1
     _lp_analog_time
-    head_stage="$lp_analog_time"
+    # head_stage="$lp_analog_time"
+    head_stage="STAGE"
 
+    local ret has_lines=
+    if _lp_vcs_uncommitted_files; then
+        _lp_vcs_unstaged_lines; ret=$?
+        # Only show unstaged changes if the VCS supports staging, otherwise
+        # show uncommitted changes
+        if (( ret == 0 )); then
+            has_lines="+$lp_vcs_unstaged_i_lines/-$lp_vcs_unstaged_d_lines"
+        elif (( ret == 1 )); then
+            has_lines="+0/-0"
+        else
+            _lp_vcs_uncommitted_lines
+            has_lines="+$lp_vcs_uncommitted_i_lines/-$lp_vcs_uncommitted_d_lines"
+        fi
+    fi
+    if [[ -n "$has_lines" ]]; then
+        head_stage="${LP_COLOR_DIFF}${has_lines}${NO_COL}"
+    fi
+
+    # BRANCH
     if _lp_vcs_branch; then
         head_branch="$lp_vcs_branch"
 
@@ -91,24 +131,38 @@ _gitcrux_VCS() {
         head_branch="${lp_vcs_commit_id:0:7}"
     fi
 
+    if _lp_vcs_head_status; then
+        # NOTE: Replace the branch name.
+        head_branch="[${LP_COLOR_CHANGES}${lp_vcs_head_status}"
+        if [[ -n "${lp_vcs_head_details-}" ]]; then
+            head_branch+=":${lp_vcs_head_details}"
+        fi
+        head_branch+="${NO_COL}]"
+    fi
+
+    if _lp_vcs_untracked_files; then
+        head_branch+="(${LP_COLOR_CHANGES}${lp_vcs_untracked_files}${NO_COL})"
+    fi
+
+    # STASH
     _GITCRUX_HEAD_STASH="stash"
+    head_stash="${_GITCRUX_HEAD_STASH}"
+    if _lp_vcs_stash_count; then
+        head_stash+="(${LP_COLOR_COMMITS}${lp_vcs_stash_count})"
+    fi
+
 
     header=""
     line=""
-    for col in "${head_remote}" "${_GITCRUX_HEAD_REPO}" "${head_stage}" "${head_branch}" "${_GITCRUX_HEAD_STASH}"; do
+    for col in "${head_remote}" "${head_repo}" "${head_stage}" "${head_branch}" "${head_stash}"; do
 
         _gitcrux_centered "│" $GITCRUX_COL_WIDTH
         line+="$gitcrux_centered"
 
-        if ((${#col}+1 > GITCRUX_COL_WIDTH)); then
-            header+="${col:0:GITCRUX_COL_WIDTH-1}…"
-        elif ((${#col}+1 == GITCRUX_COL_WIDTH)); then
-            header+="${col}"
-        else
-            _gitcrux_centered "${col}" $GITCRUX_COL_WIDTH
-            header+="$gitcrux_centered"
-        fi
+        _gitcrux_centered "${col}" $GITCRUX_COL_WIDTH
+        header+="$gitcrux_centered"
     done
+
     GITCRUX_VCS+="${header}${n}"
     GITCRUX_VCS+="${line}${n}"
 
