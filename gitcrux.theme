@@ -2,6 +2,22 @@
 GITCRUX_ARROW_RIGHT=("" "")
 GITCRUX_ARROW_LEFT=("" "")
 
+# Thresholds.
+GITCRUX_THRESH_BEHIND_NORMAL=2
+GITCRUX_THRESH_BEHIND_STRONG=5
+
+GITCRUX_THRESH_AHEAD_NORMAL=2
+GITCRUX_THRESH_AHEAD_STRONG=5
+
+GITCRUX_THRESH_LINES_NORMAL=100
+GITCRUX_THRESH_LINES_STRONG=500
+
+GITCRUX_THRESH_ADD_NORMAL=100
+GITCRUX_THRESH_ADD_STRONG=500
+
+GITCRUX_THRESH_STASH_NORMAL=1
+GITCRUX_THRESH_STASH_STRONG=5
+
 #                   fg bg bold
 GITCRUX_COLOR_WEAK="0 195 0"
 GITCRUX_COLOR_NORMAL="0 39 1"
@@ -82,7 +98,6 @@ _gitcrux_VCS_header() {
     GITCRUX_VCS=""
 
     local head_remote= head_repo= head_stage= head_branch=
-    local has_lines
 
     # REMOTE
     head_remote="remote" # TODO
@@ -106,22 +121,26 @@ _gitcrux_VCS_header() {
     head_stage="$lp_analog_time"
     # head_stage="STAGE"
 
-    local ret has_lines=
+    local ret
+    gitcrux_has_lines=
+    gitcrux_has_lines_total=0
     if _lp_vcs_uncommitted_files; then
         _lp_vcs_unstaged_lines; ret=$?
         # Only show unstaged changes if the VCS supports staging, otherwise
         # show uncommitted changes
         if (( ret == 0 )); then
-            has_lines="+$lp_vcs_unstaged_i_lines/-$lp_vcs_unstaged_d_lines"
+            gitcrux_has_lines="+$lp_vcs_unstaged_i_lines/-$lp_vcs_unstaged_d_lines"
+            gitcrux_has_lines_total=$(( gitcrux_has_lines_total + lp_vcs_unstaged_i_lines + lp_vcs_unstaged_d_lines ))
         elif (( ret == 1 )); then
-            has_lines="+0/-0"
+            gitcrux_has_lines="+0/-0"
         else
             _lp_vcs_uncommitted_lines
-            has_lines="+$lp_vcs_uncommitted_i_lines/-$lp_vcs_uncommitted_d_lines"
+            gitcrux_has_lines="+$lp_vcs_uncommitted_i_lines/-$lp_vcs_uncommitted_d_lines"
+            gitcrux_has_lines_total=$(( gitcrux_has_lines_total + lp_vcs_uncommitted_i_lines + lp_vcs_uncommitted_d_lines ))
         fi
     fi
-    if [[ "$has_lines" ]]; then
-        head_stage="${LP_COLOR_DIFF}${has_lines}${NO_COL}"
+    if [[ "$gitcrux_has_lines" ]]; then
+        head_stage="${LP_COLOR_DIFF}${gitcrux_has_lines}${NO_COL}"
     fi
 
     # BRANCH
@@ -203,7 +222,7 @@ _gitcrux_VCS() {
     # Available states:
     # - $lp_vcs_commit_behind
     # - $lp_vcs_commit_ahead
-    # - $has_lines:
+    # - $gitcrux_has_lines:
     #     - $lp_vcs_unstaged_i_lines
     #     - $lp_vcs_unstaged_d_lines
     #     OR (depending on VCS)
@@ -214,6 +233,55 @@ _gitcrux_VCS() {
     # - $lp_vcs_untracked_files
     # - $lp_vcs_stash_count
 
+    # COLORS
+    local color_lines="$GITCRUX_COLOR_WEAK"
+    if (( gitcrux_has_lines_total > GITCRUX_THRESH_LINES_NORMAL )); then
+        if (( gitcrux_has_lines_total > GITCRUX_THRESH_LINES_STRONG )); then
+            color_lines="$GITCRUX_COLOR_STRONG"
+        else
+            color_lines="$GITCRUX_COLOR_NORMAL"
+        fi
+    fi
+
+    local color_behind="$GITCRUX_COLOR_WEAK"
+    if (( lp_vcs_commit_behind > GITCRUX_THRESH_BEHIND_NORMAL )); then
+        if (( lp_vcs_commit_behind > GITCRUX_THRESH_BEHIND_STRONG )); then
+            color_behind="$GITCRUX_COLOR_STRONG"
+        else
+            color_behind="$GITCRUX_COLOR_NORMAL"
+        fi
+    fi
+
+    local color_ahead="$GITCRUX_COLOR_WEAK"
+    if (( lp_vcs_commit_ahead > GITCRUX_THRESH_AHEAD_NORMAL )); then
+        if (( lp_vcs_commit_ahead > GITCRUX_THRESH_AHEAD_STRONG )); then
+            color_ahead="$GITCRUX_COLOR_STRONG"
+        else
+            color_ahead="$GITCRUX_COLOR_NORMAL"
+        fi
+    fi
+
+    local color_stash="$GITCRUX_COLOR_WEAK"
+    if (( lp_vcs_stash_count > GITCRUX_THRESH_STASH_NORMAL )); then
+        if (( lp_vcs_stash_count > GITCRUX_THRESH_STASH_STRONG )); then
+            color_stash="$GITCRUX_COLOR_STRONG"
+        else
+            color_stash="$GITCRUX_COLOR_NORMAL"
+        fi
+    fi
+
+    local color_add="$GITCRUX_COLOR_WEAK"
+    local add_count=$(( gitcrux_has_lines_total + lp_vcs_untracked_files ))
+    if (( add_count > GITCRUX_THRESH_ADD_NORMAL )); then
+        if (( add_count > GITCRUX_THRESH_ADD_STRONG )); then
+            color_add="$GITCRUX_COLOR_STRONG"
+        else
+            color_add="$GITCRUX_COLOR_NORMAL"
+        fi
+    fi
+
+
+    # FLOWCHART
     if [[ "$lp_vcs_type" != "git" ]]; then
         _gitcrux_arrow "$_GITCRUX_HEADER_LINE" "${GITCRUX_ARROW_RIGHT[0]}" "${GITCRUX_ARROW_LEFT[1]}" "${GITCRUX_COLOR_MSG}" 1 5 "Unsupported VCS, cannot provide hints"
         GITCRUX_VCS+="${gitcrux_arrow}${n}"
@@ -221,7 +289,7 @@ _gitcrux_VCS() {
         if [[ "$lp_vcs_head_status" ]]; then
             if [[ "$lp_vcs_head_status" == *"REBASE"* ]]; then
                 explanation+=" currently rebasing"
-                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 46 1" 3 4 "add"
+                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "${GITCRUX_COLOR_NORMAL}" 3 4 "add"
                 GITCRUX_VCS+="${gitcrux_arrow}"
                 _gitcrux_explain "${explanation}"
             else # Unknown head status.
@@ -231,62 +299,62 @@ _gitcrux_VCS() {
         else # No specific head status.
             if [[ "$lp_vcs_commit_behind" != "0" ]]; then
                 explanation+=" behind the remote"
-                if [[ "$has_lines" ]]; then
-                    explanation+=" with local modifications"
-                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "0 183 1" 4 5 "save"
+                if [[ "$gitcrux_has_lines" ]]; then
+                    explanation+=" with $gitcrux_has_lines_total local modifications"
+                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$color_lines" 4 5 "save"
                     GITCRUX_VCS+="${gitcrux_arrow}${n}"
 
-                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 1 4 "pull"
+                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$color_behind" 1 4 "pull"
                     GITCRUX_VCS+="${gitcrux_arrow}${n}"
 
-                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 183 1" 4 5 "pop"
+                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_lines" 4 5 "pop"
                     GITCRUX_VCS+="${gitcrux_arrow}"
                     _gitcrux_explain "${explanation}"
                 else # Do not have diff.
                     explanation+=" without local modifications"
                     if [[ "$lp_vcs_stash_count" ]]; then
-                        explanation+=" but with stash"
-                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 1 4 "pull"
+                        explanation+=" but with $lp_vcs_stash_count stash"
+                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$color_behind" 1 4 "pull"
                         GITCRUX_VCS+="${gitcrux_arrow}${n}"
 
-                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 183 1" 4 5 "pop"
+                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$stash_color" 4 5 "pop"
                         GITCRUX_VCS+="${gitcrux_arrow}"
                         _gitcrux_explain "${explanation}"
                     else # No stash.
                         explanation+=" and no stash"
-                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "0 220 1" 1 4 "pull"
+                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$color_behind" 1 4 "pull"
                         GITCRUX_VCS+="${gitcrux_arrow}"
                         _gitcrux_explain "${explanation}"
                     fi
                 fi
             else # No commit behind.
-                if [[ "$has_lines" || "$lp_vcs_untracked_files" ]]; then
-                    explanation+=" having local modification or untracked files"
-                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 46 1" 3 4 "add"
+                if [[ "$gitcrux_has_lines" || "$lp_vcs_untracked_files" ]]; then
+                    explanation+=" having $add_count local modification or untracked files"
+                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_add" 3 4 "add"
                     GITCRUX_VCS+="${gitcrux_arrow}${n}"
 
-                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 202 1" 2 3 "commit"
+                    _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_add" 2 3 "commit"
                     GITCRUX_VCS+="${gitcrux_arrow}"
                     _gitcrux_explain "${explanation}"
                 else # Do not have diff.
                     explanation+=" no local modification nor untracked files"
                     if [[ "$lp_vcs_stash_count" ]]; then
-                        explanation+=" having stash"
-                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 183 1" 4 5 "pop"
+                        explanation+=" having $lp_vcs_stash_count stash"
+                        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_stash" 4 5 "pop"
                         GITCRUX_VCS+="${gitcrux_arrow}"
                         _gitcrux_explain "${explanation}"
                     else # Do not have stash.
                         explanation+=" and no stash"
                         if [[ "$lp_vcs_commit_ahead" != "0" ]]; then
-                            explanation+=" and ahead of the remote"
-                            _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "0 220 1" 1 2 "push"
+                            explanation+=" and $lp_vcs_commit_ahead ahead of the remote"
+                            _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_ahead" 1 2 "push"
                             GITCRUX_VCS+="${gitcrux_arrow}"
                             _gitcrux_explain "${explanation}"
                         else # No commit ahead.
                             explanation+=" and not ahead of the remote"
                             if [[ "$head_branch" == *"master"* || "$head_branch" == *"main"* ]]; then
                                 explanation+=", but clean and on main/master"
-                                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "0 45 1" 2 4 "branch"
+                                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$GITCRUX_COLOR_NORMAL" 2 4 "branch"
                                 GITCRUX_VCS+="${gitcrux_arrow}"
                                 _gitcrux_explain "${explanation}"
                             fi # Main branch.
