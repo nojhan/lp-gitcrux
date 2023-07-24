@@ -299,7 +299,7 @@ _gitcrux_VCS() {
                     fi
                 fi
             else # No commit behind.
-                if [[ "$gitcrux_has_lines" || "$lp_vcs_untracked_files" ]]; then
+                if [[ "$gitcrux_has_lines" || "$lp_vcs_untracked_files" -gt "0" ]]; then
                     explanation+=" having $add_count local modification or untracked files"
                     _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_add" 3 4 "add"
                     GITCRUX_VCS+="${gitcrux_arrow}${n}"
