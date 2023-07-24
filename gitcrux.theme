@@ -9,8 +9,8 @@ _gitcrux_centered() {
     raw_text="$ret"
 
     if (( ${#raw_text} > width )); then
-        # gitcrux_centered="${text:0:width-1}…"
-        gitcrux_centered="$text"
+        gitcrux_centered="${text:0:width-1}…"
+        # gitcrux_centered="$text"
         return 2
     elif (( ${#raw_text} == width )); then
         gitcrux_centered="$text"
@@ -52,9 +52,11 @@ _gitcrux_arrow() {
 
     span=$((to-from-${#start}-${#end}))
     if (( from > ${#in} || to > ${#in} )); then
+        gitcrux_arrow="[bad arrow indexing]"
         return 2
     else
         if (( ${#text} > span )); then
+            gitcrux_arrow="[arrow text too large]"
             return 3
         fi
     fi
@@ -150,16 +152,17 @@ _gitcrux_VCS_header() {
     fi
 
     # COLUMNS
+    GITCRUX_COL_WIDTH=${GITCRUX_MIN_COL_WIDTH}
     if [[ "$GITCRUX_COL_DYNAMIC" ]]; then
         for col in "${head_remote}" "${head_repo}" "${head_stage}" "${head_branch}" "${head_stash}"; do
-            if (( ${#col} > GITCRUX_COL_WIDTH )); then
-                __lp_strip_escapes "${col}"
+            __lp_strip_escapes "${col}"
+            if (( ${#ret} > GITCRUX_COL_WIDTH )); then
                 GITCRUX_COL_WIDTH="${#ret}"
             fi
         done
+        # At least some spacing.
+        GITCRUX_COL_WIDTH=$((GITCRUX_COL_WIDTH+2))
     fi
-    # At least some spacing.
-    GITCRUX_COL_WIDTH=$((GITCRUX_COL_WIDTH+2))
 
     gitcrux_VCS_header=""
     _GITCRUX_HEADER_LINE=""
@@ -431,9 +434,10 @@ _lp_gitcrux_theme_activate() {
     GITCRUX_COLOR_EXPLANATION=${GITCRUX_COLOR_EXPLANATION:-"28 -1 0"}
 
     # Width of a single column.
-    GITCRUX_COL_WIDTH=${GITCRUX_COL_WIDTH:-0}
+    local longest="< commit <"
+    GITCRUX_MIN_COL_WIDTH=${GITCRUX_MIN_COL_WIDTH:-${#longest}}
 
-    # Increase column width if at least one of the column text is larger than GITCRUX_COL_WIDTH.
+    # Increase column width if at least one of the column text is larger than GITCRUX_MIN_COL_WIDTH.
     GITCRUX_COL_DYNAMIC=${GITCRUX_COL_DYNAMIC:-1}
 
     # Show a sentence explaining why the hint is shown.
