@@ -1,34 +1,4 @@
 
-GITCRUX_ARROW_RIGHT=("" "")
-GITCRUX_ARROW_LEFT=("" "")
-
-# Thresholds.
-GITCRUX_THRESH_BEHIND_NORMAL=2
-GITCRUX_THRESH_BEHIND_STRONG=5
-
-GITCRUX_THRESH_AHEAD_NORMAL=2
-GITCRUX_THRESH_AHEAD_STRONG=5
-
-GITCRUX_THRESH_LINES_NORMAL=100
-GITCRUX_THRESH_LINES_STRONG=500
-
-GITCRUX_THRESH_ADD_NORMAL=100
-GITCRUX_THRESH_ADD_STRONG=500
-
-GITCRUX_THRESH_STASH_NORMAL=1
-GITCRUX_THRESH_STASH_STRONG=5
-
-#                   fg bg bold
-GITCRUX_COLOR_WEAK="0 195 0"
-GITCRUX_COLOR_NORMAL="0 39 1"
-GITCRUX_COLOR_STRONG="0 220 1"
-GITCRUX_COLOR_MSG="0 244 0"
-
-GITCRUX_COL_WIDTH=10
-GITCRUX_COL_DYNAMIC=1
-
-GITCRUX_SHOW_EXPLANATION=1
-
 # Center the given $1 text with spaces to fit a string of length $2.
 _gitcrux_centered() {
     local text width padl padr span diff i
@@ -189,7 +159,7 @@ _gitcrux_VCS_header() {
         done
     fi
     # At least some spacing.
-    GITCRUX_COL_WIDTH=$((GITCRUX_COL_WIDTH+1))
+    GITCRUX_COL_WIDTH=$((GITCRUX_COL_WIDTH+2))
 
     gitcrux_VCS_header=""
     _GITCRUX_HEADER_LINE=""
@@ -205,11 +175,10 @@ _gitcrux_VCS_header() {
 _gitcrux_explain() {
     local n=$'\n'
     if (( GITCRUX_SHOW_EXPLANATION )); then
-        local explanation="$1"
-        GITCRUX_VCS+="$explanation${n}"
-    else
-        GITCRUX_VCS+="${n}"
+        lp_terminal_format ${GITCRUX_COLOR_EXPLANATION}
+        GITCRUX_VCS+="${lp_terminal_format}${1}${NO_COL}"
     fi
+    GITCRUX_VCS+="${n}"
 }
 
 _gitcrux_VCS() {
@@ -280,7 +249,6 @@ _gitcrux_VCS() {
         fi
     fi
 
-
     # FLOWCHART
     if [[ "$lp_vcs_type" != "git" ]]; then
         _gitcrux_arrow "$_GITCRUX_HEADER_LINE" "${GITCRUX_ARROW_RIGHT[0]}" "${GITCRUX_ARROW_LEFT[1]}" "${GITCRUX_COLOR_MSG}" 1 5 "Unsupported VCS, cannot provide hints"
@@ -297,7 +265,7 @@ _gitcrux_VCS() {
                 GITCRUX_VCS+="${gitcrux_arrow}${n}"
             fi
         else # No specific head status.
-            if [[ "$lp_vcs_commit_behind" != "0" ]]; then
+            if (( lp_vcs_commit_behind > 0 )); then
                 explanation+=" behind the remote"
                 if [[ "$gitcrux_has_lines" ]]; then
                     explanation+=" with $gitcrux_has_lines_total local modifications"
@@ -312,7 +280,7 @@ _gitcrux_VCS() {
                     _gitcrux_explain "${explanation}"
                 else # Do not have diff.
                     explanation+=" without local modifications"
-                    if [[ "$lp_vcs_stash_count" ]]; then
+                    if (( lp_vcs_stash_count > 0 )); then
                         explanation+=" but with $lp_vcs_stash_count stash"
                         _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$color_behind" 1 4 "pull"
                         GITCRUX_VCS+="${gitcrux_arrow}${n}"
@@ -338,15 +306,15 @@ _gitcrux_VCS() {
                     _gitcrux_explain "${explanation}"
                 else # Do not have diff.
                     explanation+=" no local modification nor untracked files"
-                    if [[ "$lp_vcs_stash_count" ]]; then
-                        explanation+=" having $lp_vcs_stash_count stash"
+                    if (( lp_vcs_stash_count > 0 )); then
+                        explanation+=", but with $lp_vcs_stash_count stash"
                         _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_stash" 4 5 "pop"
                         GITCRUX_VCS+="${gitcrux_arrow}"
                         _gitcrux_explain "${explanation}"
                     else # Do not have stash.
                         explanation+=" and no stash"
-                        if [[ "$lp_vcs_commit_ahead" != "0" ]]; then
-                            explanation+=" and $lp_vcs_commit_ahead ahead of the remote"
+                        if (( lp_vcs_commit_ahead > 0 )); then
+                            explanation+=", but with $lp_vcs_commit_ahead ahead of the remote"
                             _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_ahead" 1 2 "push"
                             GITCRUX_VCS+="${gitcrux_arrow}"
                             _gitcrux_explain "${explanation}"
@@ -424,6 +392,52 @@ gitcrux() {
 # either when the user call `lp_theme`.
 _lp_gitcrux_theme_activate() {
     _lp_default_theme_activate
+
+    GITCRUX_ARROW_RIGHT=( ${GITCRUX_ARROW_RIGHT[@]+"${GITCRUX_ARROW_RIGHT[@]}"} )
+    [[ ${#GITCRUX_ARROW_RIGHT[@]} == 0 ]] && GITCRUX_ARROW_RIGHT=( "" "" )
+
+    GITCRUX_ARROW_LEFT=( ${GITCRUX_ARROW_LEFT[@]+"${GITCRUX_ARROW_LEFT[@]}"} )
+    [[ ${#GITCRUX_ARROW_LEFT[@]} == 0 ]] && GITCRUX_ARROW_LEFT=( "" "" )
+
+    # Thresholds.
+    GITCRUX_THRESH_BEHIND_NORMAL=${GITCRUX_THRESH_BEHIND_NORMAL:-2}
+    GITCRUX_THRESH_BEHIND_STRONG=${GITCRUX_THRESH_BEHIND_STRONG:-5}
+
+    GITCRUX_THRESH_AHEAD_NORMAL=${GITCRUX_THRESH_AHEAD_NORMAL:-2}
+    GITCRUX_THRESH_AHEAD_STRONG=${GITCRUX_THRESH_AHEAD_STRONG:-5}
+
+    GITCRUX_THRESH_LINES_NORMAL=${GITCRUX_THRESH_LINES_NORMAL:-100}
+    GITCRUX_THRESH_LINES_STRONG=${GITCRUX_THRESH_LINES_STRONG:-500}
+
+    GITCRUX_THRESH_ADD_NORMAL=${GITCRUX_THRESH_ADD_NORMAL:-100}
+    GITCRUX_THRESH_ADD_STRONG=${GITCRUX_THRESH_ADD_STRONG:-500}
+
+    GITCRUX_THRESH_STASH_NORMAL=${GITCRUX_THRESH_STASH_NORMAL:-1}
+    GITCRUX_THRESH_STASH_STRONG=${GITCRUX_THRESH_STASH_STRONG:-5}
+
+    # Light blue.
+    GITCRUX_COLOR_WEAK=${GITCRUX_COLOR_WEAK:-"0 195 0"}
+
+    # Blue bold.
+    GITCRUX_COLOR_NORMAL=${GITCRUX_COLOR_NORMAL:-"0 39 1"}
+
+    # Red/pink bold.
+    GITCRUX_COLOR_STRONG=${GITCRUX_COLOR_STRONG:-"0 220 1"}
+
+    # Grey.
+    GITCRUX_COLOR_MSG=${GITCRUX_COLOR_MSG:-"0 244 0"}
+
+    lp_terminal_format  # Dark green.
+    GITCRUX_COLOR_EXPLANATION=${GITCRUX_COLOR_EXPLANATION:-"28 -1 0"}
+
+    # Width of a single column.
+    GITCRUX_COL_WIDTH=${GITCRUX_COL_WIDTH:-0}
+
+    # Increase column width if at least one of the column text is larger than GITCRUX_COL_WIDTH.
+    GITCRUX_COL_DYNAMIC=${GITCRUX_COL_DYNAMIC:-1}
+
+    # Show a sentence explaining why the hint is shown.
+    GITCRUX_SHOW_EXPLANATION=${GITCRUX_SHOW_EXPLANATION:-1}
 }
 
 # This function is called everytime the user change their directory.
