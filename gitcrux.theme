@@ -1,9 +1,10 @@
 
-# Center the given $1 text with spaces to fit a string of length $2.
-_gitcrux_centered() {
+# Center the given $1 text with $3 to fit a string of length $2.
+_gitcrux_centered() { # text length [fill_char=' ']
     local text width padl padr span diff i
     text="$1"
     width="$2"
+    fill=${3:-" "}
 
     __lp_strip_escapes "$text"
     raw_text="$ret"
@@ -20,12 +21,12 @@ _gitcrux_centered() {
         padl=""
         padr=""
         for (( i=0; i < diff; i++ )) ; do
-            padl+=" "
-            padr+=" "
+            padl+="$fill"
+            padr+="$fill"
         done
 
         if (( span % 2 > 0 )); then
-            padr+=" "
+            padr+="$fill"
         fi
 
         gitcrux_centered="${padl}${text}${padr}"
@@ -180,13 +181,16 @@ _gitcrux_VCS_header() {
         GITCRUX_COL_WIDTH=$((GITCRUX_COL_WIDTH+2))
     fi
 
-    gitcrux_VCS_header=""
+    local fill
+    gitcrux_VCS_header="$GITCRUX_VCS_MARK"
     _GITCRUX_HEADER_LINE=""
     for col in "${head_remote}" "${head_repo}" "${head_stage}" "${head_branch}" "${head_stash}"; do
         _gitcrux_centered "│" $GITCRUX_COL_WIDTH
         _GITCRUX_HEADER_LINE+="$gitcrux_centered"
 
-        _gitcrux_centered "${col}" $GITCRUX_COL_WIDTH
+        lp_terminal_format ${GITCRUX_COLOR_FILL[@]+"${GITCRUX_COLOR_FILL[@]}"}
+        fill="${lp_terminal_format}${GITCRUX_VCS_FILL}${NO_COL}"
+        _gitcrux_centered "${col}" $GITCRUX_COL_WIDTH "$fill"
         gitcrux_VCS_header+="$gitcrux_centered"
     done
 }
@@ -194,14 +198,17 @@ _gitcrux_VCS_header() {
 _gitcrux_explain() {
     local n=$'\n'
     if (( GITCRUX_SHOW_EXPLANATION )); then
-        lp_terminal_format ${GITCRUX_COLOR_EXPLANATION[@]}
-        GITCRUX_VCS+="${lp_terminal_format}${1}${NO_COL}"
+        if (( GITCRUX_ENABLE_EXPLANATION_NEWLINE )); then
+            GITCRUX_VCS+="${n}"
+        fi
+        lp_terminal_format ${GITCRUX_COLOR_EXPLANATION[@]+"${GITCRUX_COLOR_EXPLANATION[@]}"}
+        GITCRUX_VCS+="${lp_terminal_format}${GITCRUX_MARK_EXPLANATION}${1}${NO_COL}"
     fi
     GITCRUX_VCS+="${n}"
 }
 
 _gitcrux_VCS() {
-    local n=$'\n' explanation="#"
+    local n=$'\n' explanation=""
 
     _gitcrux_VCS_header
     GITCRUX_VCS+="${gitcrux_VCS_header}${n}"
@@ -440,19 +447,25 @@ _lp_gitcrux_theme_activate() {
     GITCRUX_THRESH_STASH_STRONG=${GITCRUX_THRESH_STASH_STRONG:-5}
 
     # Light blue.
-    GITCRUX_COLOR_WEAK=${GITCRUX_COLOR_WEAK:-"0 195 0"}
+    GITCRUX_COLOR_WEAK=( ${GITCRUX_COLOR_WEAK[@]+"${GITCRUX_COLOR_WEAK[@]}"} )
+    [[ ${#GITCRUX_COLOR_WEAK[@]} == 0 ]] && GITCRUX_COLOR_WEAK=( 0 195 0 0 14 0 )
+    # fg, bg, bold, underline, fallback_fg, fallback_bg
 
     # Blue bold.
-    GITCRUX_COLOR_NORMAL=${GITCRUX_COLOR_NORMAL:-"0 39 1"}
+    GITCRUX_COLOR_NORMAL=( ${GITCRUX_COLOR_NORMAL[@]+"${GITCRUX_COLOR_NORMAL[@]}"} )
+    [[ ${#GITCRUX_COLOR_NORMAL[@]} == 0 ]] && GITCRUX_COLOR_NORMAL=( 0 39 1 0 0 12 )
 
     # Red/pink bold.
-    GITCRUX_COLOR_STRONG=${GITCRUX_COLOR_STRONG:-"0 220 1"}
+    GITCRUX_COLOR_STRONG=( ${GITCRUX_COLOR_STRONG[@]+"${GITCRUX_COLOR_STRONG[@]}"} )
+    [[ ${#GITCRUX_COLOR_STRONG[@]} == 0 ]] && GITCRUX_COLOR_STRONG=( 0 220 1 0 0 11 )
 
     # Grey.
-    GITCRUX_COLOR_MSG=${GITCRUX_COLOR_MSG:-"0 244 0"}
+    GITCRUX_COLOR_MSG=( ${GITCRUX_COLOR_MSG[@]+"${GITCRUX_COLOR_MSG[@]}"} )
+    [[ ${#GITCRUX_COLOR_MSG[@]} == 0 ]] && GITCRUX_COLOR_MSG=( 0 244 0 0 0 8 )
 
-    lp_terminal_format  # Dark green.
-    GITCRUX_COLOR_EXPLANATION=${GITCRUX_COLOR_EXPLANATION:-"28 -1 0"}
+    # Dark green.
+    GITCRUX_COLOR_EXPLANATION=( ${GITCRUX_COLOR_EXPLANATION[@]+"${GITCRUX_COLOR_EXPLANATION[@]}"} )
+    [[ ${#GITCRUX_COLOR_EXPLANATION[@]} == 0 ]] && GITCRUX_COLOR_EXPLANATION=( 28 0 0 0 2 0 )
 
     # Width of a single column.
     local longest="< commit <"
@@ -463,6 +476,22 @@ _lp_gitcrux_theme_activate() {
 
     # Show a sentence explaining why the hint is shown.
     GITCRUX_SHOW_EXPLANATION=${GITCRUX_SHOW_EXPLANATION:-1}
+
+    # Mark introducing the explanation (possibly with a new line).
+    GITCRUX_MARK_EXPLANATION=${GITCRUX_MARK_EXPLANATION:-"☝️ "}
+
+    # Put the explanation on a new line instead of after the last arrow line.
+    GITCRUX_ENABLE_EXPLANATION_NEWLINE=${GITCRUX_ENABLE_EXPLANATION_NEWLINE:-1}
+
+    # Mark for starting the VCS line.
+    GITCRUX_VCS_MARK=${GITCRUX_VCS_MARK:-""}
+
+    # Character used to fill in spaces between the VCS line items.
+    GITCRUX_VCS_FILL=${GITCRUX_VCS_FILL:-"·"}
+
+    # Color of the filling character.
+    GITCRUX_COLOR_FILL=( ${GITCRUX_COLOR_FILL[@]+"${GITCRUX_COLOR_FILL[@]}"} )
+    [[ ${#GITCRUX_COLOR_FILL[@]} == 0 ]] && GITCRUX_COLOR_FILL=( 240 0 0 0 8 0 )
 }
 
 # This function is called everytime the user change their directory.
