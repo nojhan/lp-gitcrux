@@ -33,7 +33,7 @@ _gitcrux_centered() {
 }
 
 _gitcrux_arrow() {
-    local in start end color from to text color_body color_ends
+    local in start end color from to text color_body color_ends in_to in_from
     gitcrux_arrow=""
 
     in="$1"
@@ -45,8 +45,13 @@ _gitcrux_arrow() {
     text="$7"
 
     local lp_terminal_format
-    lp_terminal_format ${color}
+    if (( $_LP_SHELL_zsh )); then
+        lp_terminal_format ${(z)color}
+    else
+        lp_terminal_format ${color}
+    fi
     color_body="$lp_terminal_format"
+
     lp_terminal_format -3 -1
     color_ends="$lp_terminal_format"
 
@@ -63,7 +68,14 @@ _gitcrux_arrow() {
 
     _gitcrux_centered "$text" $span
 
-    gitcrux_arrow="${in:0:from}${color_ends}${start}${color_body}${gitcrux_centered}${color_ends}${end}${NO_COL}${in:to:${#in}}"
+    if (( $_LP_SHELL_zsh )); then
+        in_to="$in[1,from]"
+        in_from="$in[to+1,${#in}-1]"
+    else
+        in_to="${in:0:from}"
+        in_from="${in:to:${#in}-to}"
+    fi
+    gitcrux_arrow+="${in_to}${color_ends}${start}${color_body}${gitcrux_centered}${color_ends}${end}${NO_COL}${in_from}"
 }
 
 _gitcrux_VCS_header() {
@@ -182,7 +194,7 @@ _gitcrux_VCS_header() {
 _gitcrux_explain() {
     local n=$'\n'
     if (( GITCRUX_SHOW_EXPLANATION )); then
-        lp_terminal_format ${GITCRUX_COLOR_EXPLANATION}
+        lp_terminal_format ${GITCRUX_COLOR_EXPLANATION[@]}
         GITCRUX_VCS+="${lp_terminal_format}${1}${NO_COL}"
     fi
     GITCRUX_VCS+="${n}"
