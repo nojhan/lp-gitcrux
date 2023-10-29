@@ -72,7 +72,11 @@ _gitcrux_VCS_header() {
     local head_remote= head_repo= head_stage= head_branch=
 
     # REMOTE
-    head_remote="remote" # TODO
+    if _lp_vcs_remote; then
+        head_remote="$lp_vcs_remote"
+    else
+        head_remote="remote"
+    fi
 
     # REPO
     head_repo="${_GITCRUX_HEAD_REPO}"
