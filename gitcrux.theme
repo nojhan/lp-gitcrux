@@ -105,11 +105,6 @@ _gitcrux_VCS_header() {
     fi
 
     # STAGE
-    LP_TIME_ANALOG=1
-    _lp_analog_time
-    head_stage="$lp_analog_time"
-    # head_stage="STAGE"
-
     local ret
     gitcrux_has_lines=
     gitcrux_has_lines_total=0
@@ -128,8 +123,13 @@ _gitcrux_VCS_header() {
             gitcrux_has_lines_total=$(( gitcrux_has_lines_total + lp_vcs_uncommitted_i_lines + lp_vcs_uncommitted_d_lines ))
         fi
     fi
-    if [[ "$gitcrux_has_lines" ]]; then
+    if [[ -n "$gitcrux_has_lines" ]]; then
         head_stage="${LP_COLOR_DIFF}${gitcrux_has_lines}${NO_COL}"
+    else
+        LP_ENABLE_TIME=1
+        LP_TIME_ANALOG=1
+        _lp_analog_time
+        head_stage="$lp_analog_time"
     fi
 
     # BRANCH
@@ -340,7 +340,7 @@ _gitcrux_VCS() {
                     else # Do not have stash.
                         explanation+=" and no stash"
                         if (( lp_vcs_commit_ahead > 0 )); then
-                            explanation+=", but with $lp_vcs_commit_ahead ahead of the remote"
+                            explanation+=", but with $lp_vcs_commit_ahead commit ahead of the remote"
                             _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "$color_ahead" 1 2 "push"
                             GITCRUX_VCS+="${gitcrux_arrow}"
                             _gitcrux_explain "${explanation}"
