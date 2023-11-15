@@ -229,65 +229,66 @@ _gitcrux_VCS() {
     # - $lp_vcs_stash_count
 
     # COLORS
-    local color_lines="$GITCRUX_COLOR_WEAK"
+    local color_lines="${GITCRUX_COLOR_WEAK[@]+"${GITCRUX_COLOR_WEAK[@]}"}"
     if (( gitcrux_has_lines_total > GITCRUX_THRESH_LINES_NORMAL )); then
         if (( gitcrux_has_lines_total > GITCRUX_THRESH_LINES_STRONG )); then
-            color_lines="$GITCRUX_COLOR_STRONG"
+            color_lines="${GITCRUX_COLOR_STRONG[@]+"${GITCRUX_COLOR_STRONG[@]}"}"
         else
-            color_lines="$GITCRUX_COLOR_NORMAL"
+            color_lines="${GITCRUX_COLOR_NORMAL[@]}"
         fi
     fi
 
-    local color_behind="$GITCRUX_COLOR_WEAK"
+    local color_behind="${GITCRUX_COLOR_WEAK[@]}"
     if (( lp_vcs_commit_behind > GITCRUX_THRESH_BEHIND_NORMAL )); then
         if (( lp_vcs_commit_behind > GITCRUX_THRESH_BEHIND_STRONG )); then
-            color_behind="$GITCRUX_COLOR_STRONG"
+            color_behind="${GITCRUX_COLOR_STRONG[@]}"
         else
-            color_behind="$GITCRUX_COLOR_NORMAL"
+            color_behind="${GITCRUX_COLOR_NORMAL[@]}"
         fi
     fi
 
-    local color_ahead="$GITCRUX_COLOR_WEAK"
+    local color_ahead="${GITCRUX_COLOR_WEAK[@]}"
     if (( lp_vcs_commit_ahead > GITCRUX_THRESH_AHEAD_NORMAL )); then
         if (( lp_vcs_commit_ahead > GITCRUX_THRESH_AHEAD_STRONG )); then
-            color_ahead="$GITCRUX_COLOR_STRONG"
+            color_ahead="${GITCRUX_COLOR_STRONG[@]}"
         else
-            color_ahead="$GITCRUX_COLOR_NORMAL"
+            color_ahead="${GITCRUX_COLOR_NORMAL[@]}"
         fi
     fi
 
-    local color_stash="$GITCRUX_COLOR_WEAK"
+    local color_stash="${GITCRUX_COLOR_WEAK[@]}"
     if (( lp_vcs_stash_count > GITCRUX_THRESH_STASH_NORMAL )); then
         if (( lp_vcs_stash_count > GITCRUX_THRESH_STASH_STRONG )); then
-            color_stash="$GITCRUX_COLOR_STRONG"
+            color_stash="${GITCRUX_COLOR_STRONG[@]}"
         else
-            color_stash="$GITCRUX_COLOR_NORMAL"
+            color_stash="${GITCRUX_COLOR_NORMAL[@]}"
         fi
     fi
 
-    local color_add="$GITCRUX_COLOR_WEAK"
+    local color_add="${GITCRUX_COLOR_WEAK[@]}"
     local add_count=$(( gitcrux_has_lines_total + lp_vcs_untracked_files ))
     if (( add_count > GITCRUX_THRESH_ADD_NORMAL )); then
         if (( add_count > GITCRUX_THRESH_ADD_STRONG )); then
-            color_add="$GITCRUX_COLOR_STRONG"
+            color_add="${GITCRUX_COLOR_STRONG[@]}"
         else
-            color_add="$GITCRUX_COLOR_NORMAL"
+            color_add="${GITCRUX_COLOR_NORMAL[@]}"
         fi
     fi
 
     # FLOWCHART
     if [[ "$lp_vcs_type" != "git" ]]; then
-        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" "${GITCRUX_ARROW_RIGHT[0]}" "${GITCRUX_ARROW_LEFT[1]}" "${GITCRUX_COLOR_MSG}" 1 5 "Unsupported VCS, cannot provide hints"
+        _gitcrux_arrow "$_GITCRUX_HEADER_LINE" "${GITCRUX_ARROW_RIGHT[0]}" "${GITCRUX_ARROW_LEFT[1]}" "${GITCRUX_COLOR_MSG[@]}" 1 5 "Unsupported VCS, cannot provide hints"
         GITCRUX_VCS+="${gitcrux_arrow}${n}"
     else # VCS is git
         if [[ "$lp_vcs_head_status" ]]; then
             if [[ "$lp_vcs_head_status" == *"REBASE"* ]]; then
                 explanation+=" currently rebasing"
-                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "${GITCRUX_COLOR_NORMAL}" 3 4 "add"
+                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_LEFT[@]} "${GITCRUX_COLOR_NORMAL[@]}" 3 4 "add"
                 GITCRUX_VCS+="${gitcrux_arrow}"
                 _gitcrux_explain "${explanation}"
             else # Unknown head status.
-                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" "${GITCRUX_ARROW_RIGHT[0]}" "${GITCRUX_ARROW_LEFT[1]}" "${GITCRUX_COLOR_MSG}" 1 5 "Unsupported head status, cannot provide hints"
+                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" "${GITCRUX_ARROW_RIGHT[0]}" "${GITCRUX_ARROW_LEFT[1]}" "${GITCRUX_COLOR_MSG[@]}" 1 5 "Unsupported head status, cannot provide hints"
+
                 GITCRUX_VCS+="${gitcrux_arrow}${n}"
             fi
         else # No specific head status.
@@ -348,7 +349,7 @@ _gitcrux_VCS() {
                             explanation+=" and not ahead of the remote"
                             if [[ "$head_branch" == *"master"* || "$head_branch" == *"main"* ]]; then
                                 explanation+=", but clean and on main/master"
-                                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "$GITCRUX_COLOR_NORMAL" 2 4 "branch"
+                                _gitcrux_arrow "$_GITCRUX_HEADER_LINE" ${GITCRUX_ARROW_RIGHT[@]} "${GITCRUX_COLOR_NORMAL[@]}" 2 4 "branch"
                                 GITCRUX_VCS+="${gitcrux_arrow}"
                                 _gitcrux_explain "${explanation}"
                             fi # Main branch.
@@ -448,7 +449,7 @@ _lp_gitcrux_theme_activate() {
 
     # Light blue.
     GITCRUX_COLOR_WEAK=( ${GITCRUX_COLOR_WEAK[@]+"${GITCRUX_COLOR_WEAK[@]}"} )
-    [[ ${#GITCRUX_COLOR_WEAK[@]} == 0 ]] && GITCRUX_COLOR_WEAK=( 0 195 0 0 14 0 )
+    [[ ${#GITCRUX_COLOR_WEAK[@]} == 0 ]] && GITCRUX_COLOR_WEAK=( 1 195 0 0 14 0 )
     # fg, bg, bold, underline, fallback_fg, fallback_bg
 
     # Blue bold.
