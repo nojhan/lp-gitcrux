@@ -9,7 +9,7 @@ given the current state of your Git repository.
 Hints are given in a visual way, helping the user to understand what commands
 will change.
 
-It targets users who are starting out with Git and struggle to rembemer
+It targets users who are starting out with Git and struggle to remember
 the classical Git workflow.
 
 Example:
